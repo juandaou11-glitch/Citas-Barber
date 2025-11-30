@@ -1,125 +1,174 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agenda tu cita</title>
-
-<style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agenda de Citas</title>
+  <style>
     body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        background: #f7f7f7;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: #ffffff;
+      width: 95%;
+      max-width: 450px;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.15);
+    }
+    .logo {
+      width: 120px;
+      display: block;
+      margin: 0 auto 10px auto;
     }
     h2 {
-        text-align: center;
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
     }
-    .card {
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 500px;
-        margin: auto;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    label {
+      font-weight: bold;
+      color: #333;
     }
-    select, button, input {
-        width: 100%;
-        padding: 12px;
-        margin-top: 10px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        font-size: 16px;
+    select, input[type="date"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #999;
     }
     button {
-        background: #007bff;
-        color: white;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
+      width: 100%;
+      padding: 12px;
+      background: #0a66c2;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
     }
     button:hover {
-        background: #0056b3;
+      background: #004a99;
     }
-    .success {
-        background: #d4edda;
-        padding: 15px;
-        border-radius: 8px;
-        color: #155724;
-        margin-top: 15px;
-        text-align: center;
+    .panel {
+      margin-top: 30px;
+      background: #fafafa;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
     }
-</style>
+    .panel h3 {
+      margin-top: 0;
+      text-align: center;
+    }
+    .cita-item {
+      padding: 8px;
+      margin: 5px 0;
+      background: #e8f0fe;
+      border-radius: 6px;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
 
-<div class="card">
+    <!-- Logo -->
+    <img src="logo.png" alt="Logo" class="logo">
+
     <h2>Agendar Cita</h2>
 
-    <label>Selecciona el día</label>
-    <input type="date" id="fecha" min="" required>
+    <label>Selecciona una fecha:</label>
+    <input type="date" id="fecha" />
 
-    <label>Selecciona la hora</label>
-    <select id="hora" required></select>
+    <label>Selecciona la hora:</label>
+    <select id="hora"></select>
 
-    <label>Tu nombre</label>
-    <input type="text" id="nombre" placeholder="Tu nombre" required>
+    <button onclick="confirmarCita()">Confirmar Cita</button>
 
-    <label>Tu WhatsApp</label>
-    <input type="text" id="telefono" placeholder="Ejemplo: 3001234567" required>
-
-    <button onclick="confirmar()">Confirmar Cita</button>
-
-    <div id="mensaje"></div>
-</div>
+    <!-- Panel de monitoreo -->
+    <div class="panel">
+      <h3>Panel de Citas</h3>
+      <div id="listaCitas"></div>
+    </div>
+  </div>
 
 <script>
-    // Fecha mínima = hoy
-    const fechaInput = document.getElementById("fecha");
-    const hoy = new Date().toISOString().split("T")[0];
-    fechaInput.min = hoy;
+  const horasDisponibles = [
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+    "16:00", "16:30", "17:00", "17:30", "18:00", "18:30",
+    "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
+  ];
 
-    const horaSelect = document.getElementById("hora");
+  let citas = JSON.parse(localStorage.getItem("citas")) || [];
 
-    function generarHoras() {
-        let inicio = 13 * 60; // 1:00 pm
-        let fin = 22 * 60;   // 10:00 pm
+  function cargarHoras() {
+    const select = document.getElementById("hora");
+    select.innerHTML = "";
+    horasDisponibles.forEach(h => {
+      const opt = document.createElement("option");
+      opt.value = h;
+      opt.textContent = h;
+      select.appendChild(opt);
+    });
+  }
 
-        for (let min = inicio; min <= fin; min += 30) {
-            let h = Math.floor(min / 60);
-            let m = min % 60;
-            let formato = (h > 12 ? h - 12 : h) + ":" + (m < 10 ? "0" + m : m) + (h >= 12 ? " PM" : " AM");
+  function actualizarHoras() {
+    const fecha = document.getElementById("fecha").value;
+    const select = document.getElementById("hora");
+    select.innerHTML = "";
 
-            const opt = document.createElement("option");
-            opt.value = formato;
-            opt.textContent = formato;
-            horaSelect.appendChild(opt);
-        }
+    horasDisponibles.forEach(h => {
+      const ocupada = citas.some(c => c.fecha === fecha && c.hora === h);
+      if (!ocupada) {
+        const opt = document.createElement("option");
+        opt.value = h;
+        opt.textContent = h;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  document.getElementById("fecha").addEventListener("change", actualizarHoras);
+
+  function confirmarCita() {
+    const fecha = document.getElementById("fecha").value;
+    const hora = document.getElementById("hora").value;
+
+    if (!fecha || !hora) {
+      alert("Selecciona una fecha y hora");
+      return;
     }
 
-    generarHoras();
+    citas.push({ fecha, hora });
+    localStorage.setItem("citas", JSON.stringify(citas));
+    mostrarCitas();
+    actualizarHoras();
 
-    function confirmar() {
-        const fecha = fechaInput.value;
-        const hora = horaSelect.value;
-        const nombre = document.getElementById("nombre").value.trim();
-        const telefono = document.getElementById("telefono").value.trim();
+    alert("Cita Registrada correctamente");
+  }
 
-        if (!fecha || !hora || !nombre || !telefono) {
-            alert("Por favor completa todos los campos.");
-            return;
-        }
+  function mostrarCitas() {
+    const panel = document.getElementById("listaCitas");
+    panel.innerHTML = "";
 
-        const mensaje = `Nueva cita:%0A%0A📅 *Día:* ${fecha}%0A⏰ *Hora:* ${hora}%0A👤 *Cliente:* ${nombre}%0A📱 *WhatsApp:* ${telefono}`;
+    citas.forEach(c => {
+      const div = document.createElement("div");
+      div.className = "cita-item";
+      div.textContent = `${c.fecha} - ${c.hora}`;
+      panel.appendChild(div);
+    });
+  }
 
-        const url = `https://wa.me/573044529996?text=${mensaje}`;
-
-        document.getElementById("mensaje").innerHTML =
-            `<div class="success">Cita confirmada 🎉<br>Te redireccionaremos a WhatsApp.</div>`;
-
-        setTimeout(() => {
-            window.open(url, "_blank");
-        }, 1500);
-    }
+  cargarHoras();
+  mostrarCitas();
 </script>
 
 </body>
